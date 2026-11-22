@@ -1,0 +1,64 @@
+name: Verify AI candidate safety ratings
+on:
+  push:
+    branches:
+      - ci/verify-ai-candidate-safety-ratings-10651
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-regression:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      VITEST_MAX_FORKS: '2'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install locked project dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p verification-logs
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+          yarn install --frozen-lockfile --non-interactive 2>&1 | tee verification-logs/install.log
+      - name: Prepare project and build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp config/ci.config.json config/project.json
+          yarn --cwd packages/ai build:deps 2>&1 | tee verification-logs/build-deps.log
+      - name: Install the declared Playwright browsers and OS dependencies
+        run: yarn exec playwright install --with-deps chromium chromium-headless-shell
+      - name: Verify the regression fails on the base in the browser
+        run: python3 verification/verify-ai-baseline.py
+      - name: Check lint, types, and repository formatting
+        shell: bash
+        env:
+          GITHUB_PULL_REQUEST_BASE_SHA: dd0bfd995cc13f1fd16bc928fcab05fb8ceed1ca
+        run: |
+          set -euo pipefail
+          yarn --cwd packages/ai lint 2>&1 | tee verification-logs/lint.log
+          yarn --cwd packages/ai type-check 2>&1 | tee verification-logs/typecheck.log
+          yarn format 2>&1 | tee verification-logs/format.log
+          git diff --exit-code -- packages config
+      - name: Run the complete AI browser unit suites with the patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          yarn --cwd packages/ai test:browser --reporter=json --outputFile="$PWD/verification-logs/patched-browser.json" 2>&1 | tee verification-logs/patched-browser.log
+      - name: Preserve diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ai-candidate-safety-ratings-browser-evidence
+          path: verification-logs
+          if-no-files-found: warn
+          retention-days: 14

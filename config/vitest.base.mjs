@@ -122,6 +122,7 @@ export function createBaseConfig(importMetaUrl, customConfig = {}) {
               enabled: true,
               provider: createPlaywrightProvider({
                 launchOptions: {
+                  chromiumSandbox: true,
                   args: ['--disk-cache-size=1', '--media-cache-size=1']
                 }
               }),
