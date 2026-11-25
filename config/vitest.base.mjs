@@ -209,6 +209,7 @@ export function createBaseConfig(
               enabled: true,
               provider: createPlaywrightProvider({
                 launchOptions: {
+                  chromiumSandbox: true,
                   args: ['--disk-cache-size=1', '--media-cache-size=1']
                 }
               }),

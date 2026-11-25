@@ -1,0 +1,47 @@
+name: Verify empty Firestore write stream
+on:
+  push:
+    branches: [ci/verify-firestore-empty-write-stream-10662]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.3
+      - name: Install locked project dependencies
+        run: |
+          npm install --global yarn@1.22.22
+          yarn install --frozen-lockfile --non-interactive
+          cp config/ci.config.json config/project.json
+          git fetch --depth 1 https://github.com/firebase/firebase-js-sdk.git 6e8b0eb9e64365fb7c4b44359949a83f865c41c4
+      - name: Build Firestore and dependencies
+        run: yarn --cwd packages/firestore build:deps
+      - name: Install declared browser
+        run: yarn playwright install --with-deps chromium chromium-headless-shell
+      - name: Check formatting and static analysis
+        env:
+          GITHUB_PULL_REQUEST_BASE_SHA: 6e8b0eb9e64365fb7c4b44359949a83f865c41c4
+        run: |
+          yarn format
+          git diff --exit-code -- packages config
+          yarn --cwd packages/firestore lint
+          yarn --cwd packages/firestore tsc -p tsconfig.json --noEmit
+          yarn --cwd packages/firestore assertion-id:check
+      - name: Verify baseline and patched browser specs
+        run: python3 verification/verify_firestore_10662.py
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: firestore-empty-write-stream-evidence
+          path: verification-results
+          if-no-files-found: warn
+          retention-days: 14
