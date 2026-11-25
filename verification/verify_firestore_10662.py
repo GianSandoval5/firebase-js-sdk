@@ -32,7 +32,7 @@ def require(name, args):
 
 def main():
     patched = SOURCE.read_bytes()
-    cmd = ['yarn', '--cwd', 'packages/firestore', 'vitest', 'run', '--project=browser', 'test/unit/specs/write_spec.test.ts', '-t', 'An idle write stream closed', '--retry=0', '--reporter=json', '--outputFile=' + str(OUT / 'baseline.json')]
+    cmd = ['yarn', '--cwd', 'packages/firestore', 'vitest', 'run', '--project=browser', 'test/unit/specs/write_spec.test.ts', '-t', 'An idle write stream closed with permission-denied allows later writes', '--retry=0', '--reporter=json', '--outputFile=' + str(OUT / 'baseline.json')]
     try:
         SOURCE.write_bytes(subprocess.check_output(['git', 'show', f'{BASE}:packages/firestore/src/remote/remote_store.ts'], cwd=ROOT))
         baseline = run('baseline-browser', cmd)
