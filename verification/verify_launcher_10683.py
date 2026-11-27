@@ -34,6 +34,8 @@ finally:
 
 result = run('patched-launcher', ['node', '--test', '--test-reporter=tap', 'scripts/run-tests.test.cjs'])
 assert result.returncode == 0 and '# pass 10' in result.stdout and '# fail 0' in result.stdout
+result = run('tooling-script-build-and-tests', ['yarn', 'test:tooling'])
+assert result.returncode == 0
 for platform, suite, marker in [
     ('node', 'test/unit/util/sorted_set.test.ts', 'node'),
     ('browser', 'test/unit/util/sorted_set.test.ts', 'chromium'),
